@@ -1,0 +1,496 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="script/jquery.min.js"></script>
+<script src="script/parse.js"></script>
+<script type="text/javascript">
+  var cwidth,cheight,cy,cx;
+  var ctx;
+  var configlocation;
+  var gridlocation;
+  var gridchess;
+  var dieStr;
+  var websocket;
+  var heartbeatTimerId;
+  var intervalTime;
+  var xmlDoc;
+  var gameScore;
+  var account;
+  var pass;
+  var appid;
+  
+  function drawShape(){
+    var canvas = document.getElementById('board');
+   	cwidth = canvas.width/8;
+   	cheight = canvas.height/8;
+   	cx = canvas.offsetLeft + 20;
+    cy = canvas.offsetTop + 20;
+ 
+    if (canvas.getContext){
+      ctx = canvas.getContext('2d');
+  	  for(var i = 0; i < 8; i++){
+  	  	drawLineGrid(i);
+  	  }
+      if(GetQueryString("queryId") == null || GetQueryString("queryId") == ""){
+          alert("请先配置棋盘信息");
+          return;
+      }
+  	  initParse();
+      getParseData();
+      initieces();
+    } else {
+      alert('You need Safari or Firefox 1.5+ to see this game.');
+    }
+  }
+  
+  function drawShapeT(){
+    var canvas = document.getElementById('board');
+   	cwidth = canvas.width/8;
+   	cheight = canvas.height/8;
+   	cx = canvas.offsetLeft + 20;
+    cy = canvas.offsetTop + 20;
+ 
+    if (canvas.getContext){
+      ctx = canvas.getContext('2d');
+  	  for(var i = 0; i < 8; i++){
+  	  	drawLineGrid(i);
+  	  }
+      initieces();
+      initGridLocation();
+    } else {
+      alert('You need Safari or Firefox 1.5+ to see this game.');
+    }
+  }
+  
+  function getY(y){
+  	return cy + (y * cheight) + 15;
+  }
+  
+  function getX(x){
+  	return cx + (x * cwidth) + 15;
+  }
+  
+  function drawLineGrid(lineNum){
+  	if(lineNum%2 == 0){
+  		drawBlackGrid(lineNum,0);
+  		drawWidthGrid(lineNum,1);
+  		drawBlackGrid(lineNum,2);
+  		drawWidthGrid(lineNum,3);
+  		drawBlackGrid(lineNum,4);
+  		drawWidthGrid(lineNum,5);
+  		drawBlackGrid(lineNum,6);
+  		drawWidthGrid(lineNum,7);
+  	}else{
+  		drawWidthGrid(lineNum,0);
+  		drawBlackGrid(lineNum,1);
+  		drawWidthGrid(lineNum,2);
+  		drawBlackGrid(lineNum,3);
+  		drawWidthGrid(lineNum,4);
+  		drawBlackGrid(lineNum,5);
+  		drawWidthGrid(lineNum,6);
+  		drawBlackGrid(lineNum,7);
+  	}
+  }
+  
+  function drawWidthGrid(lineNum, where){
+      ctx.fillStyle="#D2C2B9";
+      ctx.fillRect(cheight*lineNum, cwidth*where, cwidth, cheight);
+  }
+  
+  function drawBlackGrid(lineNum, where){
+      ctx.fillStyle="#6D4B41";
+      ctx.fillRect(cheight*lineNum, cwidth*where, cwidth, cheight);
+  }
+
+  function initGridLocation(){
+    var str=
+    '{"'+configlocation.H1+'":{"y":'+getY(0)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.H2+'":{"y":'+getY(0)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.H3+'":{"y":'+getY(0)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.H4+'":{"y":'+getY(0)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.H5+'":{"y":'+getY(0)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.H6+'":{"y":'+getY(0)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.H7+'":{"y":'+getY(0)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.H8+'":{"y":'+getY(0)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.G1+'":{"y":'+getY(1)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.G2+'":{"y":'+getY(1)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.G3+'":{"y":'+getY(1)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.G4+'":{"y":'+getY(1)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.G5+'":{"y":'+getY(1)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.G6+'":{"y":'+getY(1)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.G7+'":{"y":'+getY(1)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.G8+'":{"y":'+getY(1)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.F1+'":{"y":'+getY(2)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.F2+'":{"y":'+getY(2)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.F3+'":{"y":'+getY(2)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.F4+'":{"y":'+getY(2)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.F5+'":{"y":'+getY(2)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.F6+'":{"y":'+getY(2)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.F7+'":{"y":'+getY(2)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.F8+'":{"y":'+getY(2)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.E1+'":{"y":'+getY(3)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.E2+'":{"y":'+getY(3)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.E3+'":{"y":'+getY(3)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.E4+'":{"y":'+getY(3)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.E5+'":{"y":'+getY(3)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.E6+'":{"y":'+getY(3)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.E7+'":{"y":'+getY(3)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.E8+'":{"y":'+getY(3)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.D1+'":{"y":'+getY(4)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.D2+'":{"y":'+getY(4)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.D3+'":{"y":'+getY(4)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.D4+'":{"y":'+getY(4)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.D5+'":{"y":'+getY(4)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.D6+'":{"y":'+getY(4)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.D7+'":{"y":'+getY(4)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.D8+'":{"y":'+getY(4)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.C1+'":{"y":'+getY(5)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.C2+'":{"y":'+getY(5)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.C3+'":{"y":'+getY(5)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.C4+'":{"y":'+getY(5)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.C5+'":{"y":'+getY(5)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.C6+'":{"y":'+getY(5)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.C7+'":{"y":'+getY(5)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.C8+'":{"y":'+getY(5)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.B1+'":{"y":'+getY(6)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.B2+'":{"y":'+getY(6)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.B3+'":{"y":'+getY(6)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.B4+'":{"y":'+getY(6)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.B5+'":{"y":'+getY(6)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.B6+'":{"y":'+getY(6)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.B7+'":{"y":'+getY(6)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.B8+'":{"y":'+getY(6)+', "x":'+getX(7)+'},'+
+    '"'+configlocation.A1+'":{"y":'+getY(7)+', "x":'+getX(0)+'},'+
+    '"'+configlocation.A2+'":{"y":'+getY(7)+', "x":'+getX(1)+'},'+
+    '"'+configlocation.A3+'":{"y":'+getY(7)+', "x":'+getX(2)+'},'+
+    '"'+configlocation.A4+'":{"y":'+getY(7)+', "x":'+getX(3)+'},'+
+    '"'+configlocation.A5+'":{"y":'+getY(7)+', "x":'+getX(4)+'},'+
+    '"'+configlocation.A6+'":{"y":'+getY(7)+', "x":'+getX(5)+'},'+
+    '"'+configlocation.A7+'":{"y":'+getY(7)+', "x":'+getX(6)+'},'+
+    '"'+configlocation.A8+'":{"y":'+getY(7)+', "x":'+getX(7)+'}}';
+    gridlocation = eval('(' + str + ')');
+  }
+
+function initieces(){
+    setLocation("blacktower1", 0, 0, true);
+    setLocation("blackhorse1", 1, 0, true);
+    setLocation("blackphase1", 2, 0, true);
+    setLocation("blackqueen", 4, 0, true);
+    setLocation("blackking", 3, 0, true);
+    setLocation("blackphase2", 5, 0, true);
+    setLocation("blackhorse2", 6, 0, true);
+    setLocation("blacktower2", 7, 0, true);
+    setLocation("blacksoldiers1", 0, 1, true);
+    setLocation("blacksoldiers2", 1, 1, true);
+    setLocation("blacksoldiers3", 2, 1, true);
+    setLocation("blacksoldiers4", 3, 1, true);
+    setLocation("blacksoldiers5", 4, 1, true);
+    setLocation("blacksoldiers6", 5, 1, true);
+    setLocation("blacksoldiers7", 6, 1, true);
+    setLocation("blacksoldiers8", 7, 1, true);
+  	
+  	setLocation("whitetower1", 0, 7, true);
+	setLocation("whitehorse1", 1, 7, true);
+	setLocation("whitephase1", 2, 7, true);
+	setLocation("whitequeen", 4, 7, true);
+	setLocation("whiteking", 3, 7, true);
+	setLocation("whitephase2", 5, 7, true);
+	setLocation("whitehorse2", 6, 7, true);
+	setLocation("whitetower2", 7, 7, true);
+	setLocation("whitesoldiers1", 0, 6, true);
+	setLocation("whitesoldiers2", 1, 6, true);
+	setLocation("whitesoldiers3", 2, 6, true);
+	setLocation("whitesoldiers4", 3, 6, true);
+	setLocation("whitesoldiers5", 4, 6, true);
+	setLocation("whitesoldiers6", 5, 6, true);
+	setLocation("whitesoldiers7", 6, 6, true);
+	setLocation("whitesoldiers8", 7, 6, true);
+  }
+  
+  function setLocation(name, x, y, isAlive){
+  	var doc=document.getElementById(name);
+	doc.style.display = isAlive ? "block" : "none";
+   	doc.style.left = getX(x);
+  	doc.style.top = getY(y);
+  }
+  
+  function setMoveLocation(name, location) {
+    var doc=document.getElementById(name);
+    if(dieStr.indexOf(location) == -1){
+        doc.style.display = "block";
+        intervalTime = self.setInterval("move('"+name+"', "+location+")",8);
+    }else {
+        doc.style.display = "none";
+    }
+  }
+
+  function move(name, location){
+      var doc=document.getElementById(name);
+      var isOkx = false;
+      var isOky = false;
+      
+      
+      
+      if((parseInt(doc.style.top,10) + 10 <= gridlocation[location].y + 20 && parseInt(doc.style.top,10) - 10 >= gridlocation[location].y - 10) ||
+         (parseInt(doc.style.top,10) + 10 <= gridlocation[location].y + 10 && parseInt(doc.style.top,10) - 10 >= gridlocation[location].y - 20)){
+          isOky = true;
+          doc.style.top = gridlocation[location].y;
+      }else if(parseInt(doc.style.top,10) < gridlocation[location].y){
+          doc.style.top = parseInt(doc.style.top,10) + 10;
+          return;
+      }else if(parseInt(doc.style.top,10) > gridlocation[location].y){
+          doc.style.top = parseInt(doc.style.top,10) - 10;
+          return;
+      }
+      
+      if((parseInt(doc.style.left,10) + 10 <= gridlocation[location].x + 20 && parseInt(doc.style.left,10) - 10 >= gridlocation[location].x - 10) ||
+            (parseInt(doc.style.left,10) + 10 <= gridlocation[location].x + 10 && parseInt(doc.style.left,10) - 10 >= gridlocation[location].x - 20)){
+          doc.style.left = gridlocation[location].x;
+          isOkx = true;
+      }else if(parseInt(doc.style.left,10) < gridlocation[location].x){
+          doc.style.left = parseInt(doc.style.left,10) + 10;
+      }else if(parseInt(doc.style.left,10) > gridlocation[location].x){
+          doc.style.left = parseInt(doc.style.left,10) - 10;      }
+      
+      if(isOky && isOkx){
+         clearInterval(intervalTime);
+      }
+  }
+  
+  function initWebSocket(){
+    websocket = new WebSocket("ws://m2m.gizwits.com:8080/ws/app/v1");
+
+    websocket.onopen = function(evt) { onOpen(evt) }; 
+    websocket.onclose = function(evt) { onClose(evt) }; 
+    websocket.onmessage = function(evt) { onMessage(evt) }; 
+    websocket.onerror = function(evt) { onError(evt) };
+  }
+  
+  // == websocket callbacks =============================================
+	function onOpen(evt) 
+	{
+	    //连接成功
+	    var AppId = appid;
+	    var ApiHost = "http://api.gizwits.com";
+	    var UserName = account;
+	    var PassWord = pass;
+		
+	    // site v4 api login
+	    var url = ApiHost + "/app/login";
+	    $.ajax(url, {
+	        type: "POST",
+	        headers: {"X-Gizwits-Application-Id": AppId},
+	        data: "{\"username\":\"" + UserName + "\",\"password\":\"" + PassWord + "\"}"
+	    })
+	    .done(function(result) {
+	        var reponseJson=JSON.parse(result);
+	
+	        var Json = {
+	            cmd: "login_req",
+	            data: {
+	                appid: AppId,
+	                uid: reponseJson.uid,
+	                token: reponseJson.token,
+	                p0_type: "attrs_v4",
+	                heartbeat_interval: 180
+	            }
+	        };
+	        if (sendJson(Json))
+	        {
+	            //登陆中
+	        }
+	        else
+	        {
+	           	//登陆失败
+	   			isconnectAlert();
+	        };
+	    })
+	    .fail(function(evt) {
+		    //登陆失败
+	   		isconnectAlert();
+	    });
+	};
+	
+	function onClose(evt) 
+	{
+		//连接断开
+	   	isconnectAlert();
+	    stopPing();
+	};
+	
+	function onMessage(evt) 
+	{
+	    var res = JSON.parse(evt.data);
+//	    alert(JSON.stringify(evt));
+	    switch(res.cmd)
+	    {
+	        case "pong":
+	            break;
+	        case "login_res":
+	            var data = res.data;
+	            if(data.success == true)
+	            {
+	            	//登陆成功
+	                startPing();
+	            }
+	            else
+	            {
+	            	//登陆失败
+	   				isconnectAlert();
+	            };
+	            break
+	        case "s2c_noti":
+	        	var wheres = res.data.attrs.Location;
+	        	var where = "";
+	        	wheres.forEach(function(e){  
+		        	if(e.toString(16).length == 1){
+				     	where = where + "0" + e.toString(16);
+		        	}else {
+				     	where = where + "" + e.toString(16);
+		        	}
+				})
+	        	setMoveLocation(gridchess[res.data.attrs.ChessID], where);
+	            break;
+	    }
+	};
+	
+	function onError(evt) 
+	{
+	    stopPing();
+	};
+	
+	function startPing()
+	{
+	    heartbeatTimerId = window.setInterval(opPing , 180 * 1000);
+	};
+	
+	function stopPing()
+	{
+	    window.clearInterval(heartbeatTimerId);
+	};
+	
+	function opPing()
+	{
+	    if (sendJson({cmd: "ping"})){}
+	    else
+	    {
+	   		//断开
+	   		isconnectAlert();
+	    };
+	};
+	
+	function isconnectAlert(){
+		var cf = confirm("连接已断开，是否重连");
+		if(cf == true){
+			initWebSocket();
+		}
+	}
+	
+	function sendJson(json) 
+	{
+	    var data = JSON.stringify(json);
+	    return sendData(data);
+	};
+	
+	function sendData(data) 
+	{
+	    if(websocket.readyState == websocket.OPEN){
+	        websocket.send(data);
+	        return true;
+	    } else {
+	        return false;
+	    };
+	};
+
+
+    function GetQueryString(name)
+    {
+        var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if(r!=null)return  unescape(r[2]); return null;
+    }
+
+    function initParse(){
+        Parse.initialize("L1WvlJSMGsN2CSgtQaSlvQvILlTKW5Q6CQQPMpDv", "096OedpLjURU5eNphdymRKytfpuTLD1Q5TCJzkU0");
+        var GameScore = Parse.Object.extend("GameChess");
+        gameScore = new GameScore();
+    }
+
+    function getParseData(){
+        var GameScore = Parse.Object.extend("GameChess");
+        var query = new Parse.Query(GameScore);
+        query.get(GetQueryString("queryId"), {
+                  success: function(gameScore) {
+                    // The object was retrieved successfully.
+                    configlocation = gameScore.get("chessLocations");
+                    gridchess = gameScore.get("chesses");
+                    dieStr = gameScore.get("dieLocations");
+                    account = gameScore.get("account");
+                    pass = gameScore.get("pass");
+                    appid = gameScore.get("appid");
+                    initGridLocation();
+                    initWebSocket();
+                  },
+                  error: function(object, error) {
+                    // The object was not retrieved successfully.
+                    // error is a Parse.Error with an error code and message.
+                    alert('下载配置失败' + error.message);
+                  }
+                });
+    }
+</script>
+<style>
+	#board{
+		margin-top: 40px;
+		border: 20px solid #9A7662;
+	}
+	body{
+		padding-top: 30px;
+		background-color: #000000;
+		text-align: center;
+	}
+</style>
+</head>
+ 
+<body onload="drawShape();" onresize="drawShapeT();">
+  <div>
+    <img src="image/logo2.png"/><br />
+    <canvas id="board" width="800px" height="800px"></canvas>
+    <img src="image/black_tower.png" id="blacktower1" style="position: absolute;display:none;"/>
+    <img src="image/black_tower.png" id="blacktower2" style="position: absolute;display:none;"/>
+    <img src="image/black_horse.png" id="blackhorse1" style="position: absolute;display:none;"/>
+    <img src="image/black_horse.png" id="blackhorse2" style="position: absolute;display:none;"/>
+    <img src="image/black_phase.png" id="blackphase1" style="position: absolute;display:none;"/>
+    <img src="image/black_phase.png" id="blackphase2" style="position: absolute;display:none;"/>
+    <img src="image/black_king.png" id="blackking" style="position: absolute;display:none;"/>
+    <img src="image/black_queen.png" id="blackqueen" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers1" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers2" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers3" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers4" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers5" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers6" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers7" style="position: absolute;display:none;"/>
+    <img src="image/black_soldiers.png" id="blacksoldiers8" style="position: absolute;display:none;"/>
+    
+    <img src="image/white_tower.png" id="whitetower1" style="position: absolute;display:none;"/>
+    <img src="image/white_tower.png" id="whitetower2" style="position: absolute;display:none;"/>
+    <img src="image/white_horse.png" id="whitehorse1" style="position: absolute;display:none;"/>
+    <img src="image/white_horse.png" id="whitehorse2" style="position: absolute;display:none;"/>
+    <img src="image/white_phase.png" id="whitephase1" style="position: absolute;display:none;"/>
+    <img src="image/white_phase.png" id="whitephase2" style="position: absolute;display:none;"/>
+    <img src="image/white_king.png" id="whiteking" style="position: absolute;display:none;"/>
+    <img src="image/white_queen.png" id="whitequeen" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers1" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers2" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers3" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers4" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers5" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers6" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers7" style="position: absolute;display:none;"/>
+    <img src="image/white_soldiers.png" id="whitesoldiers8" style="position: absolute;display:none;"/>
+    <!--<span id="fuck" style="color:yellow">123</span>-->
+  </div>
+</body>
+</html>
+</html>
